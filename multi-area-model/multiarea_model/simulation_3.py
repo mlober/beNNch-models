@@ -642,6 +642,7 @@ def connect(simulation,
                     w_max = 0.
                     mean_delay = network.params['delay_params']['delay_i']
             else:
+                conn_spec['long_range'] = True
                 w_min = 0.
                 w_max = np.Inf
                 v = network.params['delay_params']['interarea_speed']

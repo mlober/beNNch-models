@@ -44,8 +44,8 @@ sim_params = {'t_sim': t_sim,
               't_presim': t_presim,
               'num_processes': num_processes,
               'local_num_threads': 1,
-              'recording_dict': {'record_vm': False}}
-              }
+              'recording_dict': {'record_vm': False},
+              'morph': morph}
 
 if not record_spikes:
     sim_params['recording_dict']['areas_recorded'] = []
