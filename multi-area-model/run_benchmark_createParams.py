@@ -11,17 +11,16 @@ from figures.Schmidt2018_dyn.network_simulations import NEW_SIM_PARAMS
 
 N_scaling = float(sys.argv[1])
 num_processes = int(sys.argv[2])
-local_num_threads = int(sys.argv[3])
-t_sim = float(sys.argv[4])
-K_scaling = float(sys.argv[5])
-data_path = sys.argv[6]
-data_folder_hash = sys.argv[7]
+t_sim = float(sys.argv[3])
+K_scaling = float(sys.argv[4])
+data_path = sys.argv[5]
+data_folder_hash = sys.argv[6]
 # Fig3: corresponds to figure 3 in schmidt et al. 2018: Groundstate
-mam_state = sys.argv[8]
+mam_state = sys.argv[7]
 # Fig5: corresponds to figure 5 in schmidt et al. 2018: Metastable
-rng_seed = int(sys.argv[9])
-t_presim = float(sys.argv[10])
-record_spikes = bool(sys.argv[11])
+rng_seed = int(sys.argv[8])
+t_presim = float(sys.argv[9])
+record_spikes = sys.argv[10] == 'True'
 morph = bool(sys.argv[12])
 
 if mam_state == 'ground':

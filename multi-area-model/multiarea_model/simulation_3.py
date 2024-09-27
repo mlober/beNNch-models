@@ -101,6 +101,8 @@ class Simulation:
         self.time_connect_area = 0
         self.time_connect_cc = 0
 
+        self.detailed_timers = 'time_communicate_spike_data' in nest.GetKernelStatus().keys()
+
     def __eq__(self, other):
         # Two simulations are equal if the simulation parameters and
         # the simulated networks are equal.
@@ -172,12 +174,13 @@ class Simulation:
         - spike recorder
         - voltmeter
         """
-        self.spike_recorder = nest.Create('spike_recorder')
-        status_dict = deepcopy(self.params['recording_dict']['spike_dict'])
-        label = '-'.join((self.label,
-                          status_dict['label']))
-        status_dict.update({'label': label})
-        self.spike_recorder.set(status_dict)
+        if len(self.areas_recorded) != 0:
+            self.spike_recorder = nest.Create('spike_recorder')
+            status_dict = deepcopy(self.params['recording_dict']['spike_dict'])
+            label = '-'.join((self.label,
+                              status_dict['label']))
+            status_dict.update({'label': label})
+            self.spike_recorder.set(status_dict)
 
         if self.params['recording_dict']['record_vm']:
             self.voltmeter = nest.Create('voltmeter')
@@ -186,17 +189,6 @@ class Simulation:
                               status_dict['label']))
             status_dict.update({'label': label})
             self.voltmeter.set(status_dict)
-            
-    def create_neurons(self):
-        """
-        Create all neurons of MAM at once. (Create more neurons than necessary to enable splitting.)
-        """
-        total_num_neurons_per_area = [sub['total'] for sub in list(self.network.N.values())]
-        max_num_neurons_per_area = int(max(total_num_neurons_per_area))
-
-        total_num_neurons = max_num_neurons_per_area * len(self.areas_simulated)
-        self.all_neurons = nest.Create(self.network.params['neuron_params']['neuron_model'], total_num_neurons)
-        nest.SetStatus(self.all_neurons, 'frozen', True)
 
     def create_areas(self):
         """
@@ -303,8 +295,6 @@ class Simulation:
         print("Prepared simulation in {0:.2f} seconds.".format(self.time_kernel_prepare))
 
         self.create_recording_devices()
-        if self.custom_params['morph'] == True:
-            self.create_neurons()           
         self.create_areas()
         t2 = time.time()
         self.time_network_local = t2 - t1
@@ -332,11 +322,12 @@ class Simulation:
         nest.Run(self.pre_T)
         self.time_presimulate = time.time() - t5
         self.init_memory = self.memory()
+        if self.detailed_timers:
+            self.logging_presim()
         print("Presimulation time in {0:.2f} seconds.".format(self.time_presimulate))
 
         t6 = time.time()
         nest.Run(self.T)
-        nest.Cleanup()
         self.time_simulate = time.time() - t6
 
         self.total_memory = self.memory()
@@ -352,6 +343,29 @@ class Simulation:
             return mem['heap']
         else:
             return mem
+
+    def logging_presim(self):
+        timer_keys = ['time_collocate_spike_data',
+                      'time_communicate_spike_data',
+                      'time_deliver_spike_data',
+                      'time_gather_spike_data',
+                      'time_update',
+                      'time_simulate'
+                      ]
+        values = nest.GetKernelStatus(timer_keys)
+
+        self.presim_timers = dict(zip(timer_keys, values))
+
+        fn = os.path.join(self.data_dir,
+                          'recordings',
+                          '_'.join((self.label,
+                                    'logfile',
+                                    str(nest.Rank()))))
+
+        with open(fn, 'w') as f:
+            for idx, value in enumerate(values):
+                f.write('presim_' + timer_keys[idx] + ' ' + str(value) + '\n')
+            f.write('presim_local_spike_counter' + ' ' + str(nest.GetKernelStatus('local_spike_counter')) + '\n')
 
     def logging(self):
         """
@@ -372,6 +386,12 @@ class Simulation:
              'init_memory': self.init_memory,
              'total_memory': self.total_memory}
         d.update(nest.GetKernelStatus())
+
+        if self.detailed_timers:
+            # subtract presim timers from simtime timers
+            for key in self.presim_timers.keys():
+                d[key] -= self.presim_timers[key]
+            
         print(d)
 
         fn = os.path.join(self.data_dir,
@@ -379,7 +399,7 @@ class Simulation:
                           '_'.join((self.label,
                                     'logfile',
                                     str(nest.Rank()))))
-        with open(fn, 'w') as f:
+        with open(fn, 'a') as f:
             for key, value in d.items():
                 f.write(key + ' ' + str(value) + '\n')
 
@@ -477,17 +497,8 @@ class Area:
         """
         self.gids = {}
         self.num_local_nodes = 0
-        num_areas = len(self.simulation.areas_simulated)
-        area_idx = self.simulation.areas_simulated.index(self.name)    
-        start_idx_pop = 0            
         for pop in self.populations:
-            if self.simulation.custom_params['morph'] == True:
-                end_idx_pop = start_idx_pop + int(self.neuron_numbers[pop])
-                gid = self.simulation.all_neurons[area_idx+start_idx_pop*num_areas:area_idx+end_idx_pop*num_areas:num_areas]
-                nest.SetStatus(gid, 'frozen', False)
-                start_idx_pop = end_idx_pop
-            else:
-                gid = nest.Create(self.network.params['neuron_params']['neuron_model'],
+            gid = nest.Create(self.network.params['neuron_params']['neuron_model'],
                               int(self.neuron_numbers[pop]))
             mask = create_vector_mask(self.network.structure, areas=[self.name], pops=[pop])
             I_e = self.network.add_DC_drive[mask][0]
@@ -635,16 +646,16 @@ def connect(simulation,
             if target_area == source_area:
                 if 'E' in source:
                     w_min = 0.
-                    w_max = np.Inf
+                    w_max = np.inf
                     mean_delay = network.params['delay_params']['delay_e']
                 elif 'I' in source:
-                    w_min = np.NINF
+                    w_min = -np.inf
                     w_max = 0.
                     mean_delay = network.params['delay_params']['delay_i']
             else:
                 conn_spec['long_range'] = True
                 w_min = 0.
-                w_max = np.Inf
+                w_max = np.inf
                 v = network.params['delay_params']['interarea_speed']
                 s = network.distances[target_area.name][source_area.name]
                 mean_delay = s / v
@@ -665,7 +676,7 @@ def connect(simulation,
                         std=mean_delay * network.params['delay_params']['delay_rel']
                         ),
                     min=simulation.params['dt'],
-                    max=np.Inf)}
+                    max=np.inf)}
 
             nest.Connect(source_area.gids[source],
                          target_area.gids[target],
