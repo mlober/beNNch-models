@@ -21,7 +21,7 @@ mam_state = sys.argv[7]
 rng_seed = int(sys.argv[8])
 t_presim = float(sys.argv[9])
 record_spikes = sys.argv[10] == 'True'
-morph = bool(sys.argv[12])
+morph = sys.argv[12] == 'True'
 
 if mam_state == 'ground':
     figure = 'Fig3'
