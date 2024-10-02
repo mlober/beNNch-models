@@ -161,6 +161,8 @@ class Simulation:
                               'data_path': os.path.join(self.data_dir, 'recordings'),
                               'print_time': False,
                               'rng_seed': rng_seed})
+        if self.params['morph']:
+            nest.SetKernelStatus({'threshold_delay': self.params['threshold_delay']})
 
         # nest.set_verbosity('M_INFO')
 
@@ -259,7 +261,6 @@ class Simulation:
                          for source_pop in
                          self.network.structure[source_area_name]}
                         for source_area_name in self.network.area_list}
-
         t0 = time.time()
         # Connections between simulated areas are not replaced
         if not replace_cc:
@@ -276,6 +277,7 @@ class Simulation:
                                     source_area)
                         # Else, replace the input from source_area with the
                         # chosen method
+
                         else:
                             target_area.create_additional_input(replace_non_simulated_areas,
                                                                 source_area_name,
@@ -403,7 +405,7 @@ class Simulation:
             # subtract presim timers from simtime timers
             for key in self.presim_timers.keys():
                 d[key] -= self.presim_timers[key]
-            
+
         print(d)
 
         fn = os.path.join(self.data_dir,
@@ -411,9 +413,20 @@ class Simulation:
                           '_'.join((self.label,
                                     'logfile',
                                     str(nest.Rank()))))
+
         with open(fn, 'a') as f:
             for key, value in d.items():
                 f.write(key + ' ' + str(value) + '\n')
+
+        fn_cycle_time = os.path.join(self.data_dir,
+                                     'recordings',
+                                     '_'.join((self.label,
+                                               'cycle_time_log',
+                                               str(nest.Rank()))))
+
+        np.savetxt(fn_cycle_time, np.transpose([d['cycle_time_log']['times'], d['cycle_time_log']['communicate_time'],
+                                                d['cycle_time_log']['communicate_time_global'], d['cycle_time_log']['communicate_time_local'],
+                                                d['cycle_time_log']['synch_time'], d['cycle_time_log']['local_spike_counter']]))
 
     def save_network_gids(self):
         with open(os.path.join(self.data_dir,
@@ -528,7 +541,7 @@ class Area:
                 W_ext = self.network.W[self.name][pop]['external']['external']
                 tau_syn = self.network.params['neuron_params']['single_neuron_dict']['tau_syn_ex']
                 DC = K_ext * W_ext * tau_syn * 1.e-3 * \
-                    self.network.params['rate_ext']
+                    self.network.params['input_params']['rate_ext']
                 I_e += DC
             gid.set({'I_e': I_e})
 
@@ -541,6 +554,7 @@ class Area:
             gid.set({'V_m':
                      nest.random.normal(self.network.params['neuron_params']['V0_mean'],
                                        self.network.params['neuron_params']['V0_sd'])})
+            gid.set({'V_m': self.network.params['neuron_params']['V0_mean']})
 
     def connect_populations(self):
         """
@@ -673,13 +687,15 @@ def connect(simulation,
                     w_min = -np.inf
                     w_max = 0.
                     mean_delay = network.params['delay_params']['delay_i']
+                delay_min = simulation.params['dt']
             else:
-                conn_spec['long_range'] = True
+                conn_spec['long_range'] = simulation.custom_params['morph']
                 w_min = 0.
                 w_max = np.inf
                 v = network.params['delay_params']['interarea_speed']
                 s = network.distances[target_area.name][source_area.name]
                 mean_delay = s / v
+                delay_min = simulation.custom_params['threshold_delay']
 
             syn_spec = {
                 'synapse_model': 'static_synapse',
@@ -696,7 +712,7 @@ def connect(simulation,
                         mean=mean_delay,
                         std=mean_delay * network.params['delay_params']['delay_rel']
                         ),
-                    min=simulation.params['dt'],
+                    min=delay_min,
                     max=np.inf)}
 
             nest.Connect(source_area.gids[source],
