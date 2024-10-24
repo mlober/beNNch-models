@@ -431,6 +431,28 @@ class Simulation:
                                                 d['cycle_time_log']['communicate_time_global'], d['cycle_time_log']['communicate_time_local'],
                                                 d['cycle_time_log']['synch_time'], d['cycle_time_log']['local_spike_counter']]))
 
+        fn_buffer_resize = os.path.join(self.data_dir,
+                                     'recordings',
+                                     '_'.join((self.label,
+                                               'buffer_resize_log',
+                                               str(nest.Rank()))))
+
+        np.savetxt(fn_buffer_resize, np.transpose([d['spike_buffer_resize_log']['times'], d['spike_buffer_resize_log']['global_max_spikes_sent'],
+                                                   d['spike_buffer_resize_log']['new_buffer_size']]))
+
+        if self.custom_params['morph'] == True:
+            fn_buffer_resize = os.path.join(self.data_dir,
+                                     'recordings',
+                                     '_'.join((self.label,
+                                               'buffer_resize_log_long-delay',
+                                               str(nest.Rank()))))
+
+            np.savetxt(fn_buffer_resize, np.transpose([d['spike_buffer_resize_log_long_delay']['times'], d['spike_buffer_resize_log_long_delay']['global_max_spikes_sent'],
+                                                       d['spike_buffer_resize_log_long_delay']['new_buffer_size']]))
+
+            
+        
+
     def save_network_gids(self):
         with open(os.path.join(self.data_dir,
                                'recordings',
