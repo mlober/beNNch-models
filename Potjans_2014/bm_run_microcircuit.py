@@ -79,6 +79,8 @@ t4 = time.time()
 py_timers['py_time_presimulate'] = t4 - t3
 memory_used['init_memory'] = memory()
 
+intermeditate_kernel_status = nest.GetKernelStatus()
+
 net.simulate(sim_dict['t_sim'])
 t5 = time.time()
 py_timers['py_time_simulate'] = t5 - t4
@@ -128,4 +130,4 @@ print(
     'memory: {}'.format(
         mem))
 
-logging(py_timers=py_timers, memory_used=memory_used)
+logging(py_timers=py_timers, memory_used=memory_used, intermeditate_kernel_status=intermeditate_kernel_status)
