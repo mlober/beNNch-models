@@ -41,7 +41,7 @@ network_params['fullscale_rates'] = os.path.join(
 sim_params = {'t_sim': t_sim,
               't_presim': t_presim,
               'num_processes': num_processes,
-              'local_num_threads': 1,
+              'local_num_threads': 64,
               'recording_dict': {'record_vm': False}}
 
 if not record_spikes:

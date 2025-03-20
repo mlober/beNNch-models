@@ -350,11 +350,15 @@ class Simulation:
     def logging_presim(self):
         timer_keys = ['time_collocate_spike_data',
                       'time_communicate_spike_data',
+                      'time_communicate_spike_data_local',
+                      'time_communicate_spike_data_global',
                       'time_deliver_spike_data',
                       'time_gather_spike_data',
                       'time_update',
-                      'time_simulate'
+                      'time_simulate',
+                      'time_synch_global'
                       ]
+
         values = nest.GetKernelStatus(timer_keys)
 
         self.presim_timers = dict(zip(timer_keys, values))
@@ -405,6 +409,17 @@ class Simulation:
         with open(fn, 'a') as f:
             for key, value in d.items():
                 f.write(key + ' ' + str(value) + '\n')
+
+        fn_cycle_time = os.path.join(self.data_dir,
+                                     'recordings',
+                                     '_'.join((self.label,
+                                               'cycle_time_log',
+                                               str(nest.Rank()))))
+
+        np.savetxt(fn_cycle_time, np.transpose([d['cycle_time_log']['times'], d['cycle_time_log']['communicate_time'],
+                                                d['cycle_time_log']['communicate_time_global'], d['cycle_time_log']['communicate_time_local'],
+                                                d['cycle_time_log']['synch_time'], d['cycle_time_log']['local_spike_counter']]))
+
 
     def save_network_gids(self):
         with open(os.path.join(self.data_dir,
@@ -656,7 +671,6 @@ def connect(simulation,
                     w_max = 0.
                     mean_delay = network.params['delay_params']['delay_i']
             else:
-                conn_spec['long_range'] = True
                 w_min = 0.
                 w_max = np.inf
                 v = network.params['delay_params']['interarea_speed']
