@@ -88,22 +88,23 @@ M_ERROR = 30
 # Define all relevant parameters: changes should be made here
 
 params = {
-    'num_threads': {threads_per_task},  # total number of threads per process
-    'scale': {scale},  # scaling factor of the network size
+    'num_threads': 64,  # total number of threads per process
+    'scale': int(12*2*16),  # scaling factor of the network size
     # total network size = scale*11250 neurons
-    'simtime': {model_time_sim},  # total simulation time in ms
-    'presimtime': {model_time_presim},  # simulation time until reaching equilibrium
+    'simtime': 1000,  # total simulation time in ms
+    'presimtime': 500,  # simulation time until reaching equilibrium
     'dt': 0.1,  # simulation step
-    'compressed_spikes': {compressed_spikes},  # whether to use spike compression
-    'record_spikes': {record_spikes},  # switch to record spikes of excitatory neurons to file
-    'rng_seed': {rng_seed},  # random number generator seed
+    'compressed_spikes': True,  # whether to use spike compression
+    'record_spikes': False,  # switch to record spikes of excitatory neurons to file
+    'rng_seed': 654,  # random number generator seed
     'path_name': '.',  # path where all files will have to be written
     'log_file': 'logfile',  # naming scheme for the log files
-    'step_data_keys': '{step_data_keys}',  # metrics to be recorded at each time step
+    'step_data_keys': 'None',  # metrics to be recorded at each time step
     'profile_memory': False, # record memory profile
 }
 step_data_keys = params['step_data_keys'].split(',')
 
+set_smallest_delay = True
 
 def convert_synapse_weight(tau_m, tau_syn, C_m):
     """
@@ -212,7 +213,7 @@ def build_network():
                           'overwrite_files': True,
                           'use_compressed_spikes': params['compressed_spikes'],
                           'keep_source_table': False})
-    extra_params = {kwds}
+    extra_params = False
     if extra_params:
         nest.SetKernelStatus(extra_params)
 
@@ -296,6 +297,12 @@ def build_network():
                  {'rule': 'fixed_indegree', 'indegree': CE,
                   'allow_autapses': False, 'allow_multapses': True},
                  {'synapse_model': 'stdp_pl_synapse_hom_hpc'})
+
+
+    if set_smallest_delay:
+        print('creating connection with smallest delay')
+        nest.Connect(E_neurons[0], E_neurons[1], syn_spec={'delay': 0.1})
+
 
     nest.message(M_INFO, 'build_network',
                  'Connecting inhibitory -> excitatory population.')
@@ -456,7 +463,7 @@ def run_simulation():
         intermediate_kernel_status = nest.kernel_status
 
         tic = time.time()
-        nest.Run(params['presimtime'])
+        nest.Run(params['simtime'])
         SimCPUTime = time.time() - tic
         total_memory = str(get_vmsize())
 
@@ -489,7 +496,7 @@ def run_simulation():
     # Subtract timer information from presimulation period
     timers = ['time_collocate_spike_data', 'time_communicate_prepare',
               'time_communicate_spike_data', 'time_deliver_spike_data',
-              'time_gather_spike_data', 'time_update', 'time_simulate']
+              'time_gather_spike_data', 'time_update', 'time_simulate', 'time_synch_global']
 
     for timer in timers:
         try:
@@ -506,6 +513,16 @@ def run_simulation():
     with open(fn, 'w') as f:
         for key, value in d.items():
             f.write(key + ' ' + str(value) + '\n')
+        try:
+            f.write(sr.events)
+        except:
+            pass
+
+    fn = '{fn}_{rank}.dat'.format(fn='cycle_time_log', rank=nest.Rank())
+    with open(fn, 'w') as f:
+        np.savetxt(fn, np.transpose([d['cycle_time_log']['times'], d['cycle_time_log']['communicate_time'],
+                                                d['cycle_time_log']['communicate_time_global'], d['cycle_time_log']['communicate_time_local'],
+                                                d['cycle_time_log']['synch_time'], d['cycle_time_log']['local_spike_counter']]))
 
 
     if params['profile_memory']:
