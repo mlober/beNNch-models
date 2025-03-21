@@ -2,6 +2,7 @@ import json
 import os
 
 import nest
+import numpy as np
 
 
 def logging(py_timers=None, memory_used=None, intermediate_kernel_status=None):
