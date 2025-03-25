@@ -5,7 +5,7 @@ import nest
 import numpy as np
 
 
-def logging(py_timers=None, memory_used=None, intermediate_kernel_status=None):
+def logging(py_timers=None, memory_used=None, intermediate_kernel_status={}):
     """
     Write runtime and memory for all MPI processes to file.
     """
