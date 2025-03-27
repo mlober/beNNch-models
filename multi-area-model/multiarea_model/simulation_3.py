@@ -160,10 +160,7 @@ class Simulation:
                               'overwrite_files': True,
                               'data_path': os.path.join(self.data_dir, 'recordings'),
                               'print_time': False,
-                              'rng_seed': rng_seed,
-                              'spike_buffer_grow_extra': self.params['spike_buffer_grow_extra'],
-                              'spike_buffer_shrink_limit': self.params['spike_buffer_shrink_limit'],
-                              'spike_buffer_shrink_spare': self.params['spike_buffer_shrink_spare']})
+                              'rng_seed': rng_seed})
 
         # nest.set_verbosity('M_INFO')
 
