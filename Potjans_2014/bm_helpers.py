@@ -1,5 +1,6 @@
 import json
 import os
+import numpy as np
 
 import nest
 
@@ -24,7 +25,7 @@ def logging(py_timers=None, memory_used=None):
     fn_cycle_time = os.path.join('data',
                                  '_'.join(('cycle_time_log',
                                             str(nest.Rank()))))
-
+    d = nest.GetKernelStatus()
     np.savetxt(fn_cycle_time, np.transpose([d['cycle_time_log']['times'],
                                             d['cycle_time_log']['communicate_time'],
                                             d['cycle_time_log']['communicate_time_global'],

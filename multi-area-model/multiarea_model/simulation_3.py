@@ -364,11 +364,15 @@ class Simulation:
     def logging_presim(self):
         timer_keys = ['time_collocate_spike_data',
                       'time_communicate_spike_data',
+                      'time_communicate_spike_data_local',
+                      'time_communicate_spike_data_global',
                       'time_deliver_spike_data',
                       'time_gather_spike_data',
                       'time_update',
-                      'time_simulate'
+                      'time_simulate',
+                      'time_synch_global'
                       ]
+
         values = nest.GetKernelStatus(timer_keys)
 
         self.presim_timers = dict(zip(timer_keys, values))
@@ -429,6 +433,7 @@ class Simulation:
         np.savetxt(fn_cycle_time, np.transpose([d['cycle_time_log']['times'], d['cycle_time_log']['communicate_time'],
                                                 d['cycle_time_log']['communicate_time_global'], d['cycle_time_log']['communicate_time_local'],
                                                 d['cycle_time_log']['synch_time'], d['cycle_time_log']['local_spike_counter']]))
+
 
     def save_network_gids(self):
         with open(os.path.join(self.data_dir,
