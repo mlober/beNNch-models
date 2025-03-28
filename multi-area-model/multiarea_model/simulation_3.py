@@ -165,6 +165,9 @@ class Simulation:
                               'spike_buffer_shrink_limit': self.params['spike_buffer_shrink_limit'],
                               'spike_buffer_shrink_spare': self.params['spike_buffer_shrink_spare']})
 
+        if self.params['morph']:
+            nest.SetKernelStatus({'threshold_delay': self.params['threshold_delay']})
+
         # nest.set_verbosity('M_INFO')
 
         nest.SetDefaults(self.network.params['neuron_params']['neuron_model'],
@@ -192,6 +195,16 @@ class Simulation:
                               status_dict['label']))
             status_dict.update({'label': label})
             self.voltmeter.set(status_dict)
+
+    def create_neurons(self):
+        """
+        Create all neurons of MAM at once. (Create more neurons than necessary to enable splitting.)
+        """
+        total_num_neurons_per_area = [sub['total'] for sub in list(self.network.N.values())]
+        max_num_neurons_per_area = int(max(total_num_neurons_per_area))
+        total_num_neurons = max_num_neurons_per_area * len(self.areas_simulated)
+        self.all_neurons = nest.Create(self.network.params['neuron_params']['neuron_model'], total_num_neurons)
+        nest.SetStatus(self.all_neurons, 'frozen', True)
 
     def create_areas(self):
         """
@@ -252,7 +265,6 @@ class Simulation:
                          for source_pop in
                          self.network.structure[source_area_name]}
                         for source_area_name in self.network.area_list}
-
         t0 = time.time()
         # Connections between simulated areas are not replaced
         if not replace_cc:
@@ -298,6 +310,8 @@ class Simulation:
         print("Prepared simulation in {0:.2f} seconds.".format(self.time_kernel_prepare))
 
         self.create_recording_devices()
+        if self.custom_params['morph'] == True:
+            self.create_neurons()
         self.create_areas()
         t2 = time.time()
         self.time_network_local = t2 - t1
@@ -394,7 +408,7 @@ class Simulation:
             # subtract presim timers from simtime timers
             for key in self.presim_timers.keys():
                 d[key] -= self.presim_timers[key]
-            
+
         print(d)
 
         fn = os.path.join(self.data_dir,
@@ -405,6 +419,16 @@ class Simulation:
         with open(fn, 'a') as f:
             for key, value in d.items():
                 f.write(key + ' ' + str(value) + '\n')
+
+        fn_cycle_time = os.path.join(self.data_dir,
+                                     'recordings',
+                                     '_'.join((self.label,
+                                               'cycle_time_log',
+                                               str(nest.Rank()))))
+
+        np.savetxt(fn_cycle_time, np.transpose([d['cycle_time_log']['times'], d['cycle_time_log']['communicate_time'],
+                                                d['cycle_time_log']['communicate_time_global'], d['cycle_time_log']['communicate_time_local'],
+                                                d['cycle_time_log']['synch_time'], d['cycle_time_log']['local_spike_counter']]))
 
     def save_network_gids(self):
         with open(os.path.join(self.data_dir,
@@ -500,8 +524,17 @@ class Area:
         """
         self.gids = {}
         self.num_local_nodes = 0
+        num_areas = len(self.simulation.areas_simulated)
+        area_idx = self.simulation.areas_simulated.index(self.name)
+        start_idx_pop = 0
         for pop in self.populations:
-            gid = nest.Create(self.network.params['neuron_params']['neuron_model'],
+            if self.simulation.custom_params['morph'] == True:
+                end_idx_pop = start_idx_pop + int(self.neuron_numbers[pop])
+                gid = self.simulation.all_neurons[area_idx+start_idx_pop*num_areas:area_idx+end_idx_pop*num_areas:num_areas]
+                nest.SetStatus(gid, 'frozen', False)
+                start_idx_pop = end_idx_pop
+            else:
+                gid = nest.Create(self.network.params['neuron_params']['neuron_model'],
                               int(self.neuron_numbers[pop]))
             mask = create_vector_mask(self.network.structure, areas=[self.name], pops=[pop])
             I_e = self.network.add_DC_drive[mask][0]
@@ -510,7 +543,7 @@ class Area:
                 W_ext = self.network.W[self.name][pop]['external']['external']
                 tau_syn = self.network.params['neuron_params']['single_neuron_dict']['tau_syn_ex']
                 DC = K_ext * W_ext * tau_syn * 1.e-3 * \
-                    self.network.params['rate_ext']
+                    self.network.params['input_params']['rate_ext']
                 I_e += DC
             gid.set({'I_e': I_e})
 
@@ -655,13 +688,15 @@ def connect(simulation,
                     w_min = -np.inf
                     w_max = 0.
                     mean_delay = network.params['delay_params']['delay_i']
+                delay_min = simulation.params['dt']
             else:
-                conn_spec['long_range'] = True
+                conn_spec['long_range'] = simulation.custom_params['morph']
                 w_min = 0.
                 w_max = np.inf
                 v = network.params['delay_params']['interarea_speed']
                 s = network.distances[target_area.name][source_area.name]
                 mean_delay = s / v
+                delay_min = simulation.custom_params['threshold_delay']
 
             syn_spec = {
                 'synapse_model': 'static_synapse',
@@ -678,7 +713,7 @@ def connect(simulation,
                         mean=mean_delay,
                         std=mean_delay * network.params['delay_params']['delay_rel']
                         ),
-                    min=simulation.params['dt'],
+                    min=delay_min,
                     max=np.inf)}
 
             nest.Connect(source_area.gids[source],
