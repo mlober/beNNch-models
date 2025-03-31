@@ -165,8 +165,8 @@ class Simulation:
                               'spike_buffer_shrink_limit': self.params['spike_buffer_shrink_limit'],
                               'spike_buffer_shrink_spare': self.params['spike_buffer_shrink_spare']})
 
-        if self.params['morph']:
-            nest.SetKernelStatus({'threshold_delay': self.params['threshold_delay']})
+        #if self.params['morph']:
+        #    nest.SetKernelStatus({'threshold_delay': self.params['threshold_delay']})
 
         # nest.set_verbosity('M_INFO')
 
@@ -695,7 +695,7 @@ def connect(simulation,
                     mean_delay = network.params['delay_params']['delay_i']
                 delay_min = simulation.params['dt']
             else:
-                conn_spec['long_range'] = simulation.custom_params['morph']
+                #conn_spec['long_range'] = simulation.custom_params['morph']
                 w_min = 0.
                 w_max = np.inf
                 v = network.params['delay_params']['interarea_speed']
