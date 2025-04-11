@@ -88,18 +88,18 @@ M_ERROR = 30
 # Define all relevant parameters: changes should be made here
 
 params = {
-    'num_threads': 64,  # total number of threads per process
-    'scale': int(12*2*16),  # scaling factor of the network size
+    'num_threads': {threads_per_task},  # total number of threads per process
+    'scale': {scale},  # scaling factor of the network size
     # total network size = scale*11250 neurons
-    'simtime': 1000,  # total simulation time in ms
-    'presimtime': 500,  # simulation time until reaching equilibrium
+    'simtime': {model_time_sim},  # total simulation time in ms
+    'presimtime': {model_time_presim},  # simulation time until reaching equilibrium
     'dt': 0.1,  # simulation step
-    'compressed_spikes': True,  # whether to use spike compression
-    'record_spikes': False,  # switch to record spikes of excitatory neurons to file
-    'rng_seed': 654,  # random number generator seed
+    'compressed_spikes': {compressed_spikes},  # whether to use spike compression
+    'record_spikes': {record_spikes},  # switch to record spikes of excitatory neurons to file
+    'rng_seed': {rng_seed},  # random number generator seed
     'path_name': '.',  # path where all files will have to be written
     'log_file': 'logfile',  # naming scheme for the log files
-    'step_data_keys': 'None',  # metrics to be recorded at each time step
+    'step_data_keys': '{step_data_keys}',  # metrics to be recorded at each time step
     'profile_memory': False, # record memory profile
 }
 step_data_keys = params['step_data_keys'].split(',')
