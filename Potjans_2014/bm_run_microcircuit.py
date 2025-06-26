@@ -39,20 +39,20 @@ time_start = time.time()
 
 
 sim_dict.update({
-    't_presim': 100.,
-    't_sim': 1000000,
-    'rec_dev': [""],
-    'rng_seed': 654,
-    'local_num_threads': 128,
+    't_presim': {model_time_presim},
+    't_sim': {model_time_sim},
+    'rec_dev': [{record_spikes}],
+    'rng_seed': {rng_seed},
+    'local_num_threads': {threads_per_task},
     'print_time': False,
-    'kwds': {}})
+    'kwds': {kwds}})
 
 net_dict.update({
-    'N_scaling': 1.,
-    'K_scaling': 1.,
-    'poisson_input': False,
-    'V0_type': 'optimized',
-    'synapse_type': 'static_synapse'})
+    'N_scaling': {scale_N},
+    'K_scaling': {scale_K},
+    'poisson_input': {poisson_input},
+    'V0_type': {V0_type},
+    'synapse_type': {synapse_type}})
 
 py_timers = {}
 memory_used = {}

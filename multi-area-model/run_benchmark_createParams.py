@@ -11,16 +11,19 @@ from figures.Schmidt2018_dyn.network_simulations import NEW_SIM_PARAMS
 
 N_scaling = float(sys.argv[1])
 num_processes = int(sys.argv[2])
-t_sim = float(sys.argv[3])
-K_scaling = float(sys.argv[4])
-data_path = sys.argv[5]
-data_folder_hash = sys.argv[6]
+num_local_threads = int(sys.argv[3])
+t_sim = float(sys.argv[4])
+K_scaling = float(sys.argv[5])
+data_path = sys.argv[6]
+data_folder_hash = sys.argv[7]
 # Fig3: corresponds to figure 3 in schmidt et al. 2018: Groundstate
-mam_state = sys.argv[7]
+mam_state = sys.argv[8]
 # Fig5: corresponds to figure 5 in schmidt et al. 2018: Metastable
-rng_seed = int(sys.argv[8])
-t_presim = float(sys.argv[9])
-record_spikes = sys.argv[10] == 'True'
+rng_seed = int(sys.argv[9])
+t_presim = float(sys.argv[10])
+record_spikes = sys.argv[11] == 'True'
+morph = sys.argv[12] == 'True'
+threshold_delay = float(sys.argv[13])
 
 if mam_state == 'ground':
     figure = 'Fig3'
@@ -41,8 +44,10 @@ network_params['fullscale_rates'] = os.path.join(
 sim_params = {'t_sim': t_sim,
               't_presim': t_presim,
               'num_processes': num_processes,
-              'local_num_threads': 64,
-              'recording_dict': {'record_vm': False}}
+              'local_num_threads': num_local_threads,
+              'recording_dict': {'record_vm': False},
+              'morph': morph,
+              'threshold_delay': threshold_delay}
 
 if not record_spikes:
     sim_params['recording_dict']['areas_recorded'] = []
