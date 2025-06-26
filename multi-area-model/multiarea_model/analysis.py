@@ -128,22 +128,28 @@ class Analysis:
                         data[area][pop] = np.load(fn, allow_pickle=True)
                     except FileNotFoundError:
                         if not hasattr(self, 'all_spikes'):
+                            csv_args = {'names': columns,
+                                        'sep': '\t',
+                                        'index_col': False}
+                            csv_args.update({'skiprows': 3})
+                            file_ending = 'dat'
                             fp = '.'.join(('-'.join((self.simulation.label,
                                                      self.simulation.params[
                                                          'recording_dict'][d]['label'],
                                                      '*')),
-                                           'gdf'))
+                                           file_ending))
                             files = glob.glob(os.path.join(rec_dir, fp))
                             dat = pd.DataFrame(columns=columns)
                             for f in files:
-                                dat = dat.append(pd.read_csv(f,
-                                                             names=columns, sep='\t',
-                                                             index_col=False),
-                                                 ignore_index=True)
+                                # dat = dat.append(pd.read_csv(f, **csv_args),
+                                #                  ignore_index=True)
+                                dat = pd.concat([dat, pd.read_csv(f, **csv_args)], ignore_index=True)
                             self.all_spikes = dat
                         print(area, pop)
+                        print(self.all_spikes)
                         gids = self.network_gids[(self.network_gids.area == area) &
                                                  (self.network_gids.population == pop)]
+                        print(gids.min_gid.values[0])
                         ind = ((self.all_spikes.senders >= gids.min_gid.values[0]) &
                                (self.all_spikes.senders <= gids.max_gid.values[0]))
                         dat = self.all_spikes[ind]
@@ -238,12 +244,16 @@ class Analysis:
             else:
                 for area, pop in iterator:
                     if pop in self.network.structure[area]:
+                        print(pop, 'in network.structure')
                         spikes = self.spike_data[area][pop][:, 1]
                         indices = np.where(np.logical_and(spikes > params['t_min'],
                                                           spikes < params['t_max']))
+                        print(indices[0].size, self.network.N[area][pop])
                         d[area][pop] = (indices[0].size / (self.network.N[
                             area][pop] * (params['t_max'] - params['t_min']) / 1000.0), np.nan)
+                        print('rate = ', d[area][pop])
                     else:
+                        print(area, pop,' rate set to 0.0')
                         d[area][pop] = (0., 0.)
                 for area in params['areas']:
                     total_spikes = ah.area_spike_train(self.spike_data[area])
@@ -253,6 +263,7 @@ class Analysis:
                         self.network.N[area]['total'] *
                         (params['t_max'] - params['t_min']) / 1000.0)
             self.pop_rates = d.to_dict()
+            print(self.pop_rates)
 
     def create_pop_rate_dists(self, **keywords):
         """
