@@ -325,7 +325,7 @@ class Simulation:
         self.init_memory = self.memory()
         print("Presimulation time in {0:.2f} seconds.".format(self.time_presimulate))
 
-        intermediate_kernel_status = nest.kernel_status
+        self.intermediate_kernel_status = nest.kernel_status
 
         t6 = time.time()
         nest.Run(self.T)
@@ -377,20 +377,20 @@ class Simulation:
         for timer in presim_timers:
             try:
                 if type(d[timer]) == tuple or type(d[timer]) == list:
-                    timer_array = tuple(d[timer][tid] - intermediate_kernel_status[timer][tid] for tid in range(len(d[timer])))
+                    timer_array = tuple(d[timer][tid] - self.intermediate_kernel_status[timer][tid] for tid in range(len(d[timer])))
                     d[timer] = timer_array[0]
                     d[timer + "_max"] = max(timer_array)
                     d[timer + "_min"] = min(timer_array)
                     d[timer + "_mean"] = np.mean(timer_array)
                     d[timer + "_all"] = timer_array
-                    d[timer + '_presim'] = intermediate_kernel_status[timer][0]
-                    d[timer + "_presim_max"] = max(intermediate_kernel_status[timer])
-                    d[timer + "_presim_min"] = min(intermediate_kernel_status[timer])
-                    d[timer + "_presim_avg"] = np.mean(intermediate_kernel_status[timer])
-                    d[timer + "_presim_all"] = intermediate_kernel_status[timer]
+                    d[timer + '_presim'] = self.intermediate_kernel_status[timer][0]
+                    d[timer + "_presim_max"] = max(self.intermediate_kernel_status[timer])
+                    d[timer + "_presim_min"] = min(self.intermediate_kernel_status[timer])
+                    d[timer + "_presim_avg"] = np.mean(self.intermediate_kernel_status[timer])
+                    d[timer + "_presim_all"] = self.intermediate_kernel_status[timer]
                 else:
-                    d[timer] -= intermediate_kernel_status[timer]
-                    d[timer + '_presim'] = intermediate_kernel_status[timer]
+                    d[timer] -= self.intermediate_kernel_status[timer]
+                    d[timer + '_presim'] = self.intermediate_kernel_status[timer]
             except KeyError:
                 # KeyError if compiled without detailed timers, except time_simulate
                 continue
