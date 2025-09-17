@@ -288,7 +288,7 @@ class Simulation:
         Create the network and execute simulation.
         Record used memory and wallclock time.
         """
-        tic = time.time()
+        t0 = time.time()
         self.base_memory = self.memory()
         self.prepare()
         t1 = time.time()
