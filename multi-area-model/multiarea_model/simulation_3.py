@@ -377,13 +377,11 @@ class Simulation:
         for timer in presim_timers:
             try:
                 if type(d[timer]) == tuple or type(d[timer]) == list:
-                    print(f'tuple timer {timer}: ', d[timer])
                     timer_array = tuple(d[timer][tid] - self.intermediate_kernel_status[timer][tid] for tid in range(len(d[timer])))
                     d[timer] = timer_array[0]
                     d[timer + "_max"] = max(timer_array)
                     d[timer + "_min"] = min(timer_array)
                     d[timer + "_mean"] = np.mean(timer_array)
-                    print(f'tuple timer {timer} mean: ', d[timer+'_mean'])
                     d[timer + "_all"] = timer_array
                     d[timer + '_presim'] = self.intermediate_kernel_status[timer][0]
                     d[timer + "_presim_max"] = max(self.intermediate_kernel_status[timer])
@@ -391,7 +389,6 @@ class Simulation:
                     d[timer + "_presim_avg"] = np.mean(self.intermediate_kernel_status[timer])
                     d[timer + "_presim_all"] = self.intermediate_kernel_status[timer]
                 else:
-                    print(f'timer {timer}: ', d[timer])
                     d[timer] -= self.intermediate_kernel_status[timer]
                     d[timer + '_presim'] = self.intermediate_kernel_status[timer]
             except KeyError:
