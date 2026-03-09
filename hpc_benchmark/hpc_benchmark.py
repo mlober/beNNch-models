@@ -191,6 +191,12 @@ brunel_params = {
 ###############################################################################
 # Function Section
 
+def message(func, msg):
+    try:
+        nest.message(msg)
+    except TypeError:
+        nest.message(M_INFO, func, msg)
+
 
 def build_network():
     """Builds the network including setting of simulation and neuron
@@ -216,15 +222,14 @@ def build_network():
     if extra_params:
         nest.SetKernelStatus(extra_params)
 
-    nest.message(M_INFO, 'build_network', 'Creating excitatory population.')
+    message('build_network', 'Creating excitatory population.')
     E_neurons = nest.Create('iaf_psc_alpha', NE, params=model_params)
 
-    nest.message(M_INFO, 'build_network', 'Creating inhibitory population.')
+    message('build_network', 'Creating inhibitory population.')
     I_neurons = nest.Create('iaf_psc_alpha', NI, params=model_params)
 
     if brunel_params['randomize_Vm']:
-        nest.message(M_INFO, 'build_network',
-                     'Randomzing membrane potentials.')
+        message('build_network', 'Randomzing membrane potentials.')
 
         random_vm = nest.random.normal(brunel_params['mean_potential'],
                                        brunel_params['sigma_potential'])
@@ -236,8 +241,7 @@ def build_network():
     # number of incomining inhibitory connections
     CI = int(1. * NI / params['scale'])
 
-    nest.message(M_INFO, 'build_network',
-                 'Creating excitatory stimulus generator.')
+    message('build_network', 'Creating excitatory stimulus generator.')
 
     # Convert synapse weight from mV to pA
     conversion_factor = convert_synapse_weight(
@@ -252,8 +256,7 @@ def build_network():
     E_stimulus = nest.Create('poisson_generator', 1, {
         'rate': nu_ext * CE * 1000.})
 
-    nest.message(M_INFO, 'build_network',
-                 'Creating excitatory spike recorder.')
+    message('build_network', 'Creating excitatory spike recorder.')
 
     if params['record_spikes']:
         recorder_label = os.path.join(
@@ -280,7 +283,7 @@ def build_network():
     stdp_params['weight'] = JE_pA
     nest.SetDefaults('stdp_pl_synapse_hom_hpc', stdp_params)
 
-    nest.message(M_INFO, 'build_network', 'Connecting stimulus generators.')
+    message('build_network', 'Connecting stimulus generators.')
 
     # Connect Poisson generator to neuron
 
@@ -289,32 +292,28 @@ def build_network():
     nest.Connect(E_stimulus, I_neurons, {'rule': 'all_to_all'},
                  {'synapse_model': 'syn_ex'})
 
-    nest.message(M_INFO, 'build_network',
-                 'Connecting excitatory -> excitatory population.')
+    message('build_network', 'Connecting excitatory -> excitatory population.')
 
     nest.Connect(E_neurons, E_neurons,
                  {'rule': 'fixed_indegree', 'indegree': CE,
                   'allow_autapses': False, 'allow_multapses': True},
                  {'synapse_model': 'stdp_pl_synapse_hom_hpc'})
 
-    nest.message(M_INFO, 'build_network',
-                 'Connecting inhibitory -> excitatory population.')
+    message('build_network', 'Connecting inhibitory -> excitatory population.')
 
     nest.Connect(I_neurons, E_neurons,
                  {'rule': 'fixed_indegree', 'indegree': CI,
                   'allow_autapses': False, 'allow_multapses': True},
                  {'synapse_model': 'syn_in'})
 
-    nest.message(M_INFO, 'build_network',
-                 'Connecting excitatory -> inhibitory population.')
+    message('build_network', 'Connecting excitatory -> inhibitory population.')
 
     nest.Connect(E_neurons, I_neurons,
                  {'rule': 'fixed_indegree', 'indegree': CE,
                   'allow_autapses': False, 'allow_multapses': True},
                  {'synapse_model': 'syn_ex'})
 
-    nest.message(M_INFO, 'build_network',
-                 'Connecting inhibitory -> inhibitory population.')
+    message('build_network', 'Connecting inhibitory -> inhibitory population.')
 
     nest.Connect(I_neurons, I_neurons,
                  {'rule': 'fixed_indegree', 'indegree': CI,
@@ -332,14 +331,20 @@ def build_network():
             local_neurons = E_neurons
 
         if len(local_neurons) < brunel_params['Nrec']:
-            nest.message(
-                M_ERROR, 'build_network',
+            try:
+                nest.message(
                 """Spikes can only be recorded from local neurons, but the
                 number of local neurons is smaller than the number of neurons
-                spikes should be recorded from. Aborting the simulation!""")
+                spikes should be recorded from. Aborting the simulation!""", nest.VerbosityLevel.ERROR)
+            except TypeError:
+                nest.message(
+                    M_ERROR, 'build_network',
+                    """Spikes can only be recorded from local neurons, but the
+                    number of local neurons is smaller than the number of neurons
+                    spikes should be recorded from. Aborting the simulation!""")
             exit(1)
 
-        nest.message(M_INFO, 'build_network', 'Connecting spike recorders.')
+        message('build_network', 'Connecting spike recorders.')
         nest.Connect(local_neurons[:brunel_params['Nrec']], E_recorder,
                      'all_to_all', 'static_synapse_hpc')
 
@@ -366,7 +371,10 @@ def run_simulation():
     """Performs a simulation, including network construction"""
 
     nest.ResetKernel()
-    nest.set_verbosity(M_INFO)
+    try:
+        nest.verbosity = nest.VerbosityLevel.INFO
+    except AttributeError:
+        nest.set_verbosity(M_INFO)
 
     if params['profile_memory']:
         base_memory = str(get_vmsize())
