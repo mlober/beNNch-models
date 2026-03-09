@@ -21,7 +21,7 @@ def logging(py_timers=None, memory_used=None, intermediate_kernel_status={}):
     
     for timer in presim_timers:
         try:
-            if type(d[timer]) == tuple or type(d[timer]) == list:
+            if isinstance(d[timer], (tuple, list, np.ndarray)):   
                 timer_array = tuple(d[timer][tid] - intermediate_kernel_status[timer][tid] for tid in range(len(d[timer])))
                 d[timer] = timer_array[0]
                 d[timer + "_max"] = max(timer_array)
@@ -42,7 +42,7 @@ def logging(py_timers=None, memory_used=None, intermediate_kernel_status={}):
                
     for timer in other_timers:
         try:
-            if type(d[timer]) == tuple or type(d[timer]) == list:
+            if isinstance(d[timer], (tuple, list, np.ndarray)): 
                 timer_array = d[timer]
                 d[timer] = timer_array[0]
                 d[timer + "_max"] = max(timer_array)
