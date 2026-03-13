@@ -191,11 +191,17 @@ brunel_params = {
 ###############################################################################
 # Function Section
 
-def message(func, msg):
-    try:
-        nest.message(msg)
-    except TypeError:
-        nest.message(M_INFO, func, msg)
+def message(func, msg, severity="INFO"):
+    if severity == "ERROR":
+        try:
+            nest.message(msg, nest.VerbosityLevel.ERROR)
+        except TypeError:
+            nest.message(M_ERROR, func, msg)
+    else:
+        try:
+            nest.message(msg)
+        except TypeError:
+            nest.message(M_INFO, func, msg)
 
 
 def build_network():
@@ -331,17 +337,9 @@ def build_network():
             local_neurons = E_neurons
 
         if len(local_neurons) < brunel_params['Nrec']:
-            try:
-                nest.message(
-                """Spikes can only be recorded from local neurons, but the
-                number of local neurons is smaller than the number of neurons
-                spikes should be recorded from. Aborting the simulation!""", nest.VerbosityLevel.ERROR)
-            except TypeError:
-                nest.message(
-                    M_ERROR, 'build_network',
-                    """Spikes can only be recorded from local neurons, but the
-                    number of local neurons is smaller than the number of neurons
-                    spikes should be recorded from. Aborting the simulation!""")
+            message('build_network', """Spikes can only be recorded from local neurons, but the
+            number of local neurons is smaller than the number of neurons
+            spikes should be recorded from. Aborting the simulation!""", "ERROR")
             exit(1)
 
         message('build_network', 'Connecting spike recorders.')
