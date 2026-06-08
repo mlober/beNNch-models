@@ -379,7 +379,7 @@ class Simulation:
 
         for timer in presim_timers:
             try:
-                if type(d[timer]) == tuple or type(d[timer]) == list:
+                try:   
                     timer_array = tuple(d[timer][tid] - self.intermediate_kernel_status[timer][tid] for tid in range(len(d[timer])))
                     d[timer] = timer_array[0]
                     d[timer + "_max"] = max(timer_array)
@@ -391,7 +391,8 @@ class Simulation:
                     d[timer + "_presim_min"] = min(self.intermediate_kernel_status[timer])
                     d[timer + "_presim_avg"] = np.mean(self.intermediate_kernel_status[timer])
                     d[timer + "_presim_all"] = self.intermediate_kernel_status[timer]
-                else:
+                except TypeError:
+                    # No threaded timers, fall back to scalar handling
                     d[timer] -= self.intermediate_kernel_status[timer]
                     d[timer + '_presim'] = self.intermediate_kernel_status[timer]
             except KeyError:
@@ -400,13 +401,16 @@ class Simulation:
 
         for timer in other_timers:
             try:
-                if type(d[timer]) == tuple or type(d[timer]) == list:
+                try:
                     timer_array = d[timer]
                     d[timer] = timer_array[0]
                     d[timer + "_max"] = max(timer_array)
                     d[timer + "_min"] = min(timer_array)
                     d[timer + "_mean"] = np.mean(timer_array)
                     d[timer + "_all"] = timer_array
+                except TypeError:
+                    # No threaded timers, d[timer] is already a scalar and is set after nest.kernel_status
+                    continue
             except KeyError:
                 # KeyError if compiled without detailed timers, except time_simulate
                 continue
