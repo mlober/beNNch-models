@@ -718,11 +718,13 @@ def connect(simulation,
                         w_max = 0.
                         mean_delay = network.params['delay_params']['delay_i']
                 else:
+                    conn_spec['long_range'] = simulation.custom_params['morph']
                     w_min = 0.
                     w_max = np.inf
                     v = network.params['delay_params']['interarea_speed']
                     s = network.distances[target_area.name][source_area.name]
                     mean_delay = s / v
+                    delay_min = simulation.custom_params['threshold_delay']
 
                 syn_spec = {
                     'synapse_model': 'static_synapse',
@@ -739,8 +741,8 @@ def connect(simulation,
                             mean=mean_delay,
                             std=mean_delay * network.params['delay_params']['delay_rel']
                             ),
-                        min=simulation.params['dt'] - 0.5 * nest.resolution,
-                        max=np.Inf)}
+                        min=delay_min,
+                        max=np.inf)}
 
                 nest.Connect(source_area.gids[source],
                              target_area.gids[target],
