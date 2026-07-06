@@ -192,6 +192,18 @@ brunel_params = {
 ###############################################################################
 # Function Section
 
+def message(func, msg, severity="INFO"):
+    if severity == "ERROR":
+        try:
+            nest.message(msg, nest.VerbosityLevel.ERROR)
+        except TypeError:
+            nest.message(M_ERROR, func, msg)
+    else:
+        try:
+            nest.message(msg)
+        except TypeError:
+            nest.message(M_INFO, func, msg)
+
 
 def build_network():
     """Builds the network including setting of simulation and neuron
@@ -217,15 +229,14 @@ def build_network():
     if extra_params:
         nest.SetKernelStatus(extra_params)
 
-    nest.message(M_INFO, 'build_network', 'Creating excitatory population.')
+    message('build_network', 'Creating excitatory population.')
     E_neurons = nest.Create('iaf_psc_alpha', NE, params=model_params)
 
-    nest.message(M_INFO, 'build_network', 'Creating inhibitory population.')
+    message('build_network', 'Creating inhibitory population.')
     I_neurons = nest.Create('iaf_psc_alpha', NI, params=model_params)
 
     if brunel_params['randomize_Vm']:
-        nest.message(M_INFO, 'build_network',
-                     'Randomzing membrane potentials.')
+        message('build_network', 'Randomzing membrane potentials.')
 
         random_vm = nest.random.normal(brunel_params['mean_potential'],
                                        brunel_params['sigma_potential'])
@@ -237,8 +248,7 @@ def build_network():
     # number of incomining inhibitory connections
     CI = int(1. * NI / params['scale'])
 
-    nest.message(M_INFO, 'build_network',
-                 'Creating excitatory stimulus generator.')
+    message('build_network', 'Creating excitatory stimulus generator.')
 
     # Convert synapse weight from mV to pA
     conversion_factor = convert_synapse_weight(
@@ -253,8 +263,7 @@ def build_network():
     E_stimulus = nest.Create('poisson_generator', 1, {
         'rate': nu_ext * CE * 1000.})
 
-    nest.message(M_INFO, 'build_network',
-                 'Creating excitatory spike recorder.')
+    message('build_network', 'Creating excitatory spike recorder.')
 
     if params['record_spikes']:
         recorder_label = os.path.join(
@@ -281,7 +290,7 @@ def build_network():
     stdp_params['weight'] = JE_pA
     nest.SetDefaults('stdp_pl_synapse_hom_hpc', stdp_params)
 
-    nest.message(M_INFO, 'build_network', 'Connecting stimulus generators.')
+    message('build_network', 'Connecting stimulus generators.')
 
     # Connect Poisson generator to neuron
 
@@ -290,38 +299,28 @@ def build_network():
     nest.Connect(E_stimulus, I_neurons, {'rule': 'all_to_all'},
                  {'synapse_model': 'syn_ex'})
 
-    nest.message(M_INFO, 'build_network',
-                 'Connecting excitatory -> excitatory population.')
+    message('build_network', 'Connecting excitatory -> excitatory population.')
 
     nest.Connect(E_neurons, E_neurons,
                  {'rule': 'fixed_indegree', 'indegree': CE,
                   'allow_autapses': False, 'allow_multapses': True},
                  {'synapse_model': 'stdp_pl_synapse_hom_hpc'})
 
-
-    if set_smallest_delay:
-        print('creating connection with smallest delay')
-        nest.Connect(E_neurons[0], E_neurons[1], syn_spec={'delay': 0.1})
-
-
-    nest.message(M_INFO, 'build_network',
-                 'Connecting inhibitory -> excitatory population.')
+    message('build_network', 'Connecting inhibitory -> excitatory population.')
 
     nest.Connect(I_neurons, E_neurons,
                  {'rule': 'fixed_indegree', 'indegree': CI,
                   'allow_autapses': False, 'allow_multapses': True},
                  {'synapse_model': 'syn_in'})
 
-    nest.message(M_INFO, 'build_network',
-                 'Connecting excitatory -> inhibitory population.')
+    message('build_network', 'Connecting excitatory -> inhibitory population.')
 
     nest.Connect(E_neurons, I_neurons,
                  {'rule': 'fixed_indegree', 'indegree': CE,
                   'allow_autapses': False, 'allow_multapses': True},
                  {'synapse_model': 'syn_ex'})
 
-    nest.message(M_INFO, 'build_network',
-                 'Connecting inhibitory -> inhibitory population.')
+    message('build_network', 'Connecting inhibitory -> inhibitory population.')
 
     nest.Connect(I_neurons, I_neurons,
                  {'rule': 'fixed_indegree', 'indegree': CI,
@@ -339,14 +338,12 @@ def build_network():
             local_neurons = E_neurons
 
         if len(local_neurons) < brunel_params['Nrec']:
-            nest.message(
-                M_ERROR, 'build_network',
-                """Spikes can only be recorded from local neurons, but the
-                number of local neurons is smaller than the number of neurons
-                spikes should be recorded from. Aborting the simulation!""")
+            message('build_network', """Spikes can only be recorded from local neurons, but the
+            number of local neurons is smaller than the number of neurons
+            spikes should be recorded from. Aborting the simulation!""", "ERROR")
             exit(1)
 
-        nest.message(M_INFO, 'build_network', 'Connecting spike recorders.')
+        message('build_network', 'Connecting spike recorders.')
         nest.Connect(local_neurons[:brunel_params['Nrec']], E_recorder,
                      'all_to_all', 'static_synapse_hpc')
 
@@ -373,7 +370,10 @@ def run_simulation():
     """Performs a simulation, including network construction"""
 
     nest.ResetKernel()
-    nest.set_verbosity(M_INFO)
+    try:
+        nest.verbosity = nest.VerbosityLevel.INFO
+    except AttributeError:
+        nest.set_verbosity(M_INFO)
 
     if params['profile_memory']:
         base_memory = str(get_vmsize())
@@ -406,18 +406,18 @@ def run_simulation():
         for d in range(presim_steps):
             nest.Run(nest.min_delay)
             times[d] = time.time() - tic
-            vmsizes[presim_steps] = get_vmsize()
-            vmpeaks[presim_steps] = get_vmpeak()
-            vmrsss[presim_steps] = get_rss()
+            vmsizes[d] = get_vmsize()
+            vmpeaks[d] = get_vmpeak()
+            vmrsss[d] = get_rss()
             for key in step_data_keys:
                 step_data[key][d] = getattr(nest, key)
 
         if presim_remaining_time > 0:
             nest.Run(presim_remaining_time)
             times[presim_steps] = time.time() - tic
-            vmsizes[presim_steps + sim_steps] = get_vmsize()
-            vmpeaks[presim_steps + sim_steps] = get_vmpeak()
-            vmrsss[presim_steps + sim_steps] = get_rss()
+            vmsizes[presim_steps] = get_vmsize()
+            vmpeaks[presim_steps] = get_vmpeak()
+            vmrsss[presim_steps] = get_rss()
             for key in step_data_keys:
                 step_data[key][presim_steps] = getattr(nest, key)
             presim_steps += 1
@@ -431,21 +431,21 @@ def run_simulation():
         for d in range(sim_steps):
             nest.Run(nest.min_delay)
             times[presim_steps + d] = time.time() - tic
+            vmsizes[presim_steps + d] = get_vmsize()
+            vmpeaks[presim_steps + d] = get_vmpeak()
+            vmrsss[presim_steps + d] = get_rss()
             for key in step_data_keys:
                 step_data[key][presim_steps + d] = getattr(nest, key)
 
         if sim_remaining_time > 0:
             nest.Run(sim_remaining_time)
             times[presim_steps + sim_steps] = time.time() - tic
+            vmsizes[presim_steps + sim_steps] = get_vmsize()
+            vmpeaks[presim_steps + sim_steps] = get_vmpeak()
+            vmrsss[presim_steps + sim_steps] = get_rss()
             for key in step_data_keys:
                 step_data[key][presim_steps + sim_steps] = getattr(nest, key)
             sim_steps += 1
-
-        SimCPUTime = time.time() - tic
-        total_memory = str(get_vmsize())
-        total_memory_rss = str(get_rss())
-        total_memory_peak = str(get_vmpeak())
-
     else:
         build_dict, sr = build_network()
 
@@ -464,9 +464,12 @@ def run_simulation():
 
         tic = time.time()
         nest.Run(params['simtime'])
-        SimCPUTime = time.time() - tic
-        total_memory = str(get_vmsize())
 
+    SimCPUTime = time.time() - tic
+    total_memory = str(get_vmsize())
+    total_memory_rss = str(get_rss())
+    total_memory_peak = str(get_vmpeak())
+       
     average_rate = 0.0
     if params['record_spikes']:
         average_rate = compute_rate(sr)
@@ -494,14 +497,45 @@ def run_simulation():
     d.update(final_kernel_status)
 
     # Subtract timer information from presimulation period
-    timers = ['time_collocate_spike_data', 'time_communicate_prepare',
-              'time_communicate_spike_data', 'time_deliver_spike_data',
-              'time_gather_spike_data', 'time_update', 'time_simulate', 'time_synch_global']
+    presim_timers = ['time_collocate_spike_data', 'time_communicate_spike_data', 'time_deliver_secondary_data', 'time_deliver_spike_data', 'time_gather_secondary_data', 'time_gather_spike_data', 'time_omp_synchronization_simulation', 'time_mpi_synchronization', 'time_simulate', 'time_update']
+    presim_timers.extend([timer + '_cpu' for timer in presim_timers])
+    other_timers = ['time_communicate_prepare', 'time_communicate_target_data', 'time_construction_connect', 'time_construction_create', 'time_gather_target_data', 'time_omp_synchronization_construction']
+    other_timers.extend([timer + '_cpu' for timer in other_timers])
 
-    for timer in timers:
+    for timer in presim_timers:
         try:
-            d[timer + '_presim'] = intermediate_kernel_status[timer]
-            d[timer] -= intermediate_kernel_status[timer]
+            try:
+                timer_array = tuple(d[timer][tid] - intermediate_kernel_status[timer][tid] for tid in range(len(d[timer])))
+                d[timer] = timer_array[0]
+                d[timer + "_max"] = max(timer_array)
+                d[timer + "_min"] = min(timer_array)
+                d[timer + "_mean"] = np.mean(timer_array)
+                d[timer + "_all"] = timer_array
+                d[timer + '_presim'] = intermediate_kernel_status[timer][0]
+                d[timer + "_presim_max"] = max(intermediate_kernel_status[timer])
+                d[timer + "_presim_min"] = min(intermediate_kernel_status[timer])
+                d[timer + "_presim_avg"] = np.mean(intermediate_kernel_status[timer])
+                d[timer + "_presim_all"] = intermediate_kernel_status[timer]
+            except TypeError:
+                # No threaded timers, fall back to scalar handling
+                d[timer] -= intermediate_kernel_status[timer]
+                d[timer + '_presim'] = intermediate_kernel_status[timer]
+        except KeyError:
+            # KeyError if compiled without detailed timers, except time_simulate
+            continue
+               
+    for timer in other_timers:
+        try:
+            try: 
+                timer_array = d[timer]
+                d[timer] = timer_array[0]
+                d[timer + "_max"] = max(timer_array)
+                d[timer + "_min"] = min(timer_array)
+                d[timer + "_mean"] = np.mean(timer_array)
+                d[timer + "_all"] = timer_array
+            except TypeError:
+                # No threaded timers, d[timer] is already a scalar and is set after nest.kernel_status
+                continue
         except KeyError:
             # KeyError if compiled without detailed timers, except time_simulate
             continue
