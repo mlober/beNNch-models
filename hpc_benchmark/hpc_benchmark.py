@@ -104,6 +104,7 @@ params = {
 }
 step_data_keys = params['step_data_keys'].split(',')
 
+set_smallest_delay = True
 
 def convert_synapse_weight(tau_m, tau_syn, C_m):
     """
@@ -224,7 +225,7 @@ def build_network():
                           'overwrite_files': True,
                           'use_compressed_spikes': params['compressed_spikes'],
                           'keep_source_table': False})
-    extra_params = {kwds}
+    extra_params = False
     if extra_params:
         nest.SetKernelStatus(extra_params)
 
@@ -546,6 +547,16 @@ def run_simulation():
     with open(fn, 'w') as f:
         for key, value in d.items():
             f.write(key + ' ' + str(value) + '\n')
+        try:
+            f.write(sr.events)
+        except:
+            pass
+
+    fn = '{fn}_{rank}.dat'.format(fn='cycle_time_log', rank=nest.Rank())
+    with open(fn, 'w') as f:
+        np.savetxt(fn, np.transpose([d['cycle_time_log']['times'], d['cycle_time_log']['communicate_time'],
+                                                d['cycle_time_log']['communicate_time_global'], d['cycle_time_log']['communicate_time_local'],
+                                                d['cycle_time_log']['synch_time'], d['cycle_time_log']['local_spike_counter']]))
 
 
     if params['profile_memory']:

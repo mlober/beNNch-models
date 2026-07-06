@@ -22,6 +22,8 @@ mam_state = sys.argv[8]
 rng_seed = int(sys.argv[9])
 t_presim = float(sys.argv[10])
 record_spikes = sys.argv[11] == 'True'
+morph = sys.argv[12] == 'True'
+threshold_delay = float(sys.argv[13])
 
 if mam_state == 'ground':
     figure = 'Fig3'
@@ -43,7 +45,9 @@ sim_params = {'t_sim': t_sim,
               't_presim': t_presim,
               'num_processes': num_processes,
               'local_num_threads': num_local_threads,
-              'recording_dict': {'record_vm': False}}
+              'recording_dict': {'record_vm': False},
+              'morph': morph,
+              'threshold_delay': threshold_delay}
 
 if not record_spikes:
     sim_params['recording_dict']['areas_recorded'] = []
