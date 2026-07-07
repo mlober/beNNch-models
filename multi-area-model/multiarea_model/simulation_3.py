@@ -719,7 +719,8 @@ def connect(simulation,
                         mean_delay = network.params['delay_params']['delay_i']
                     delay_min = simulation.params['dt']
                 else:
-                    conn_spec['long_range'] = simulation.custom_params['morph']
+                    if simulation.custom_params['morph']:
+                        conn_spec['long_range'] = True
                     w_min = 0.
                     w_max = np.inf
                     v = network.params['delay_params']['interarea_speed']
