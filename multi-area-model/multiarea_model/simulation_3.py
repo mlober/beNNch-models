@@ -717,6 +717,7 @@ def connect(simulation,
                         w_min = -np.inf
                         w_max = 0.
                         mean_delay = network.params['delay_params']['delay_i']
+                    delay_min = simulation.params['dt']
                 else:
                     conn_spec['long_range'] = simulation.custom_params['morph']
                     w_min = 0.
