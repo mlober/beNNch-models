@@ -453,7 +453,7 @@ class Simulation:
         #                                        d['cycle_time_log']['communicate_time_global'], d['cycle_time_log']['communicate_time_local'],
         #                                        d['cycle_time_log']['synch_time'], d['cycle_time_log']['local_spike_counter']]))
 
-        np.savetxt(fn_cycle_time, np.transpose([d['cycle_time_log']['times'], d['cycle_time_log']['communicate_time'], 
+        np.savetxt(fn_cycle_time, np.transpose([d['cycle_time_log']['time_update'], d['cycle_time_log']['time_communicate_spike_data'], 
                                                 d['cycle_time_log']['local_spike_counter']]))
 
     def save_network_gids(self):
